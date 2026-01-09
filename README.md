@@ -7,6 +7,10 @@ Creation of a bus booking system with a user and admin interface.
   1. Creating a new file with the relevant information from the given CSV file.
   2. Checking if the updated file already exists and, if not, creating a file to store the details from the csv file.
   3. Delete the columns that are not needed.
--UseCase2:
+
+- UseCase2:
+  1. check
+1.check
+
 
    
