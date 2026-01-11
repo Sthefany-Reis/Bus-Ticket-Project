@@ -1,0 +1,4 @@
+name,email,password,role
+admin,admin@email.com,adm1,admin
+a,aa@g.com,aa,user
+aa,a@a.com,aa,user
