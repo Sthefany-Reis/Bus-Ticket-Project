@@ -1,6 +1,6 @@
 # BUS-TICKET-PROJECT
 
-Creation of a bus booking system with user and admin interface.
+Creation of a bus booking system with a user and admin interface.
 
 # Features
     - UseCase1:
@@ -13,4 +13,3 @@ Creation of a bus booking system with user and admin interface.
       2. Store user and admin credentials.
       3. Implement authentication to restrict access to certain features based on user roles.
       4. Create a user, admin and main menu for navigation.
-
