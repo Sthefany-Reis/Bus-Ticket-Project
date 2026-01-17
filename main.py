@@ -3,6 +3,7 @@
 import csv  
 import os
 import re
+from datetime import datetime
 
 
 # Admin login details (FOR NOW)
@@ -17,32 +18,43 @@ class user():
         self.password = password
         self.role = role
     
+# Category class
+class category():
+    def __init__(self, title, description, code):
+        self.title = title
+        self.description = description
+        self.code = code
+
+# TopUp class
+class topUp:
+    def __init__(self, title, description, entType, entUnit, entValue, entQuantity, entStart, entEnd, className, classQuantity,  price, category, code):
+        self.title = title
+        self.description = description
+        self.entType = entType
+        self.entUnit = entUnit
+        self.entValue = entValue
+        self.entQuantity = entQuantity
+        self.entStart = entStart
+        self.entEnd = entEnd
+        self.className = className
+        self.classQuantity = classQuantity
+        self.price = int(price)
+        self.category = category
+        self.code = code
+
 
 # Main class
 class main:
     def __init__(self): 
         self.usersList = []
+        self.categories = []
+        self.topUps = []
+
         self.removeIdColumns()
         self.userFile()
         self.loadUsers()
-
-
-    # Load users from the CSV file
-    def loadUsers(self):
-        with open("users.csv", "r") as file:
-            reader = csv.DictReader(file)
-            for row in reader:
-                self.usersList.append({"name": row["name"], "email": row["email"], "password": row["password"], "role": row["role"]})
-
-    # Create users.csv file if it does not exist
-    def userFile(self):
-        if not os.path.exists("users.csv"):
-            with open("users.csv", "w", newline="") as file:
-                writer = csv.writer(file)
-                writer.writerow(["name", "email", "password", "role"])
-                # Add admin login details to the file
-                writer.writerow([admLogin["name"], admLogin["email"], admLogin["password"], admLogin["role"]])
-
+        self.loadCategories()
+        self.loadTopUps()
 
     # Function to remove specific columns from the CSV file
     def removeIdColumns(self):
@@ -88,57 +100,91 @@ class main:
             # Handle error that occurs while reading the file
             except FileNotFoundError:
                 print("something went wrong, cannot read the file")
-                return self.removeIdColumns()
+                return
 
+
+
+
+
+    # Create users.csv file if it does not exist
+    def userFile(self):
+        if not os.path.exists("users.csv"):
+            with open("users.csv", "w", newline="") as file:
+                writer = csv.writer(file)
+                writer.writerow(["name", "email", "password", "role"])
+                # Add admin login details to the file
+                writer.writerow([admLogin["name"], admLogin["email"], admLogin["password"], admLogin["role"]])
+
+
+   # Load users from the CSV file
+    def loadUsers(self):
+        with open("users.csv", "r") as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                self.usersList.append({"name": row["name"], "email": row["email"], "password": row["password"], "role": row["role"]})
+ 
+    # Load categories from the CSV file
+    def loadCategories(self):
+        seen = set()
+        code = 0
+        with open("updated_file.csv", "r") as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                if row["category_title"] not in seen:
+                    self.categories.append(category(
+                        row["category_title"],
+                        row["category_description"],
+                        code))
+                    seen.add(row["category_title"])
+                    code += 1
+
+
+    # Load top-ups from the CSV file
+    def loadTopUps(self):
+        code = 0
+        with open("updated_file.csv", "r") as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                self.topUps.append(topUp(
+                    row["topup_title"],
+                    row["topup_description"],
+                    row["topup_entitlement_type"],
+                    row["topup_entitlement_unit"],
+                    row["topup_entitlement_value"],
+                    row["topup_entitlement_quantity"],
+                    row["topup_entitlement_start_date"],
+                    row["topup_entitlement_end_date"],
+                    row["topup_passenger_class_name"],
+                    row["topup_passenger_class_quantity"],
+                    row["topup_price_in_pence"],
+                    row["category_title"],
+                    code))
+                code += 1
+
+    def displayChoice(selectedTop):
+        # Convert entitlement start and end dates to datetime objects
+        start_date =  datetime.fromisoformat(selectedTop.entStart)
+        end_date = datetime.fromisoformat(selectedTop.entEnd)
+        print(
+            f"Title: {selectedTop.title}\n"
+            f"Description: {selectedTop.description}\n"
+            f"Price: {selectedTop.price / 100:.2f} pounds\n"
+            f"Passenger Class: {selectedTop.className}")
+
+        # Display entitlement details based on entitlement type
+        if selectedTop.entType.lower() == "fixed_date":
+            print(
+                f"Valid: From {start_date.strftime('%d %b %Y %H:%M')} "
+                f"to {end_date.strftime('%d %b %Y %H:%M')}\n")
+
+        elif selectedTop.entType.lower() == "flexible":
+            print(
+                f"Quantity: {selectedTop.entQuantity} passes, "
+                f"each valid for {selectedTop.entValue} {selectedTop.entUnit} from the first use.\n")
+        else:
+            print("Unknown entitlement type.\n")
+          	
         
-    # Function to register a new user
-    def registerUser(self): 
-            print("\nRegister New User")
-            name = input("Enter your name: ").strip()
-
-            # Check for empty name
-            if not name:
-                print("Name cannot be empty. Please try again.\n")
-                return self.registerUser()
-            
-           
-            email = input("Enter your email: ").strip().lower()
-
-            # Check for empty email
-            if not email:
-                print("Email cannot be empty. Please try again.\n")
-                return self.registerUser()
-
-            # Validate email format
-            if not self.validEmail(email):
-                print("Invalid email format. Please try again.\n")
-                return self.registerUser()
-                  
-
-            else:
-                password = input("Enter your password: ")
-                tempPassword = input("Confirm your password: ")
-
-                # Check for empty password
-                if not password:
-                    print("Password cannot be empty. Please try again.\n")
-                    return self.registerUser()
-
-                else:
-                    if password != tempPassword:
-                                print("Passwords do not match. Please try again.\n")
-                                return self.registerUser()
-                    
-                    elif any(user["email"] == email for user in self.usersList):
-                        print("Email already exists. Please try again with a different email.\n")
-                        return self.registerUser()
-
-                    # If all validations pass, register the user
-                    else:
-                        self.save(name, email, password)
-                        print("Registration successful! You can now log in.\n")
-
-                        return self.mainMenu()
 
     # Save new user to the CSV file
     def save(self, name, email, password):
@@ -153,6 +199,57 @@ class main:
     def validEmail(self, email):
         valid = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
         return re.match(valid, email) is not None
+
+
+
+
+    # Function to register a new user
+    def registerUser(self): 
+            print("\nRegister New User")
+            name = input("Enter your name: ").strip()
+
+            # Check for empty name
+            if not name:
+                print("Name cannot be empty. Please try again.\n")
+                return self.registerUser()
+            
+            else:
+                email = input("Enter your email: ").strip().lower()
+
+                # Check for empty email
+                if not email:
+                    print("Email cannot be empty. Please try again.\n")
+                    return self.registerUser()
+
+                # Validate email format
+                elif not self.validEmail(email):
+                    print("Invalid email format. Please try again.\n")
+                    return self.registerUser()
+                  
+
+                else:
+                    password = input("Enter your password: ")
+                    tempPassword = input("Confirm your password: ")
+
+                    # Check for empty password
+                    if not password:
+                        print("Password cannot be empty. Please try again.\n")
+                        return self.registerUser()
+
+                    else:
+                        if password != tempPassword:
+                                    print("Passwords do not match. Please try again.\n")
+                                    return self.registerUser()
+                    
+                        elif any(user["email"] == email for user in self.usersList):
+                            print("Email already exists. Please try again with a different email.\n")
+                            return self.registerUser()
+
+                        # If all validations pass, register the user
+                        else:
+                            self.save(name, email, password)
+                            print("Registration successful! You can now log in.\n")
+                            return self.mainMenu()
 
     # User login function
     def login(self):
@@ -184,9 +281,78 @@ class main:
                             self.admMenu()
                         else:
                             self.userMenu()
-                        return
                 print("Invalid email or password. Please try again.\n")
                 return self.login()
+
+    # Category and Top-Up Selection
+    def catChoice(self): 
+        print("\nCategories:")
+        for cat in self.categories:
+            print(f"{cat.code}. {cat.title}")
+        while True:
+            try:
+                choice = input("\nSelect a Category by entering its code or 'b' to go back: ")
+                # Validate category choice
+                if choice.isdigit():
+                    choice = int(choice)
+                    if choice < 0 or choice >= len(self.categories):
+                        print("Invalid choice. Please try again.")
+                        return self.catChoice()
+                    else:
+                        selectedCat = next(
+                            cat                # take this category
+                            for cat in self.categories   # from the list of categories
+                            if cat.code == choice )       # only if the code matches the user's choice
+                        print(f"\nYou selected category: {selectedCat.title}")
+                        print(f"Description: {selectedCat.description}\n")
+                        print("Available Top-Ups:")
+                        for topup in self.topUps:
+                            if topup.category == selectedCat.title:
+                                print(f"{topup.code}. {topup.title} - Price: {topup.price/100:.2f} pounds")
+                        choice = int(input("\nSelect a Top-Up by entering its code : "))
+                        # Validate top-up choice
+                        if choice < 0 or choice >= len(self.topUps) and choice :
+                            print("Invalid choice. Please try again.")
+                            return self.catChoice()
+                        # check if the selected top-up belongs to the selected category
+                        elif not any(topup.code == choice and topup.category == selectedCat.title for topup in self.topUps): 
+                            print("Invalid choice. Please try again.")
+                            return self.catChoice()
+                        else:
+                            selectedTop = next(
+                                topup                  # take this top-up
+                                for topup in self.topUps    # from the list of top-ups
+                                if topup.code == choice     # only if the code matches the user's choice
+                                and topup.category == selectedCat.title)    # and belongs to the selected category
+                            print(f"You selected Top-Up: {selectedTop.title} with Price: {selectedTop.price/100:.2f} pounds")
+                            print(f"Description: {selectedTop.description}\n")
+                            confirm = input("Do you want to purchase this Top-Up? (yes/no): ").strip().lower()
+                            if confirm == "yes" or "y":
+                                print("Top-Up purchased successfully!\n")
+                                print("Your ticket details:")
+                                return main.displayChoice(selectedTop)
+                            elif confirm == "no" or "n":
+                                print("Purchase cancelled.\n")
+                                return self.catChoice()
+                            else:
+                                print("Invalid choice. Please try again.")
+                                return self.catChoice()
+                
+                # Go back to User Menu
+                elif choice == "b" or "B":
+                    print("Going back to User Menu.\n")
+                    return self.userMenu()
+                # Invalid input
+                else:
+                    print("Invalid choice. Please try again.")
+                    return self.catChoice()
+
+            #Handle invalid input that cannot be converted to int  
+            except (ValueError, IndexError):
+                print("Invalid choice. Please try again.")
+                return self.catChoice()
+
+
 
 
     # User Menu
@@ -201,6 +367,7 @@ User Menu:
             choice = input("Enter your choice: ")
             if choice == "1":
                 print("Purchase Ticket")
+                self.catChoice()
             elif choice == "2":
                 print("Logout")
                 self.mainMenu()
@@ -241,7 +408,6 @@ Admin Menu:
 
     # Main Menu
     def mainMenu(self):        
-        print("Welcome to the Bus Ticket Booking System")
         while True:
             print("""
 Main Menu:
@@ -264,4 +430,5 @@ Main Menu:
 
 # Run the main program
 if __name__ == "__main__":
+    print("Welcome to the Bus Ticket Booking System")
     main().mainMenu()
