@@ -13,3 +13,9 @@ Creation of a bus booking system with a user and admin interface.
       2. Store user and admin credentials.
       3. Implement authentication to restrict access to certain features based on user roles.
       4. Create a user, admin and main menu for navigation.
+
+     - UseCase3:
+      1. Allow users to search ticket by category.
+      2. Display ticket details. 
+      3. 
+
