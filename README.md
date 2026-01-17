@@ -17,5 +17,6 @@ Creation of a bus booking system with a user and admin interface.
      - UseCase3:
       1. Allow users to search ticket by category.
       2. Display ticket details. 
-      3. 
+      3. Allow users to choose the topUp Options.
+      4.
 
