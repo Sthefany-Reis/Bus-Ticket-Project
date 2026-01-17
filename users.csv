@@ -1,4 +1,8 @@
 name,email,password,role
 admin,admin@email.com,adm1,admin
-a,aa@g.com,aa,user
-aa,a@a.com,aa,user
+a,a@gmail.com,a,user
+aa,a@aa.com,aa,user
+sthef,sthef@gmail.com,sthef,user
+aa,aa@aa.com,aa,user
+ss,ss@gmail.com,ss,user
+dd,dd@gmail.com,dd,user

@@ -9,19 +9,50 @@ import re
 admLogin = {"name": "admin", "email": "admin@email.com", "password": "adm1", "role": "admin"}
 
 
-# Function to remove specific columns from the CSV file
-def removeIdColumns():
-    deleteIdColumns = ["category_id", "topup_passenger_class_id", "topup_id"]
+# User class
+class user():
+    def __init__(self, name, email, password, role):
+        self.name = name
+        self.email = email
+        self.password = password
+        self.role = role
+    
 
-    while True:
+# Main class
+class main:
+    def __init__(self): 
+        self.usersList = []
+        self.removeIdColumns()
+        self.userFile()
+        self.loadUsers()
+
+
+    # Load users from the CSV file
+    def loadUsers(self):
+        with open("users.csv", "r") as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                self.usersList.append({"name": row["name"], "email": row["email"], "password": row["password"], "role": row["role"]})
+
+    # Create users.csv file if it does not exist
+    def userFile(self):
+        if not os.path.exists("users.csv"):
+            with open("users.csv", "w", newline="") as file:
+                writer = csv.writer(file)
+                writer.writerow(["name", "email", "password", "role"])
+                # Add admin login details to the file
+                writer.writerow([admLogin["name"], admLogin["email"], admLogin["password"], admLogin["role"]])
+
+
+    # Function to remove specific columns from the CSV file
+    def removeIdColumns(self):
+        deleteIdColumns = ["category_id", "topup_passenger_class_id", "topup_id"]
         # Handle the error if the products file does not exist
         if not os.path.exists("mobile_products.csv"):
             print("mobile_products.csv file does not exist")
-
         else:
         # Read the file content
             try:
-
                 # Create an empty file if updated_file.csv does not exist
                 if not os.path.exists("updated_file.csv"):
                     open("updated_file.csv", "a").close()
@@ -55,68 +86,68 @@ def removeIdColumns():
                         print("updated_file.csv already has data, skipping write operation.")
 
             # Handle error that occurs while reading the file
-            except:
+            except FileNotFoundError:
                 print("something went wrong, cannot read the file")
-                break
+                return self.removeIdColumns()
 
-        # Exit the loop after one complete operation
-        break
-
-# Customer/User Menu
-class user():
-    def __init__(self):
-        pass
-
-    # If file no file, write the header amd admin login details
-    try:
-        with open("users.csv", "r") as file:
-            pass
-
-    # Handle the error if the file does not exist
-    except FileNotFoundError:
-        with open("users.csv", "w", newline="") as file:
-            if os.path.getsize("users.csv") == 0:
-                writer = csv.writer(file)
-                writer.writerow(["name", "email", "password", "role"])
-                writer.writerow([admLogin["name"], admLogin["email"], admLogin["password"], admLogin["role"]])
-
+        
     # Function to register a new user
     def registerUser(self): 
+            print("\nRegister New User")
+            name = input("Enter your name: ").strip()
 
-        # Read existing users from the CSV file
-        users = []
-        with open("users.csv", "r") as file:
-            reader = csv.DictReader(file)
-            for row in reader:
-                users.append(row)
-            print("Register New User\n")
-            name = input("Enter your name: ").strip().lower()
+            # Check for empty name
+            if not name:
+                print("Name cannot be empty. Please try again.\n")
+                return self.registerUser()
+            
+           
             email = input("Enter your email: ").strip().lower()
+
+            # Check for empty email
+            if not email:
+                print("Email cannot be empty. Please try again.\n")
+                return self.registerUser()
+
             # Validate email format
             if not self.validEmail(email):
-                print("Invalid email format. Please try again.")
-                self.registerUser()
-                   
-            # Check if email already exists
-            if any(user["email"] == email for user in users):
-                print("This email is already registered. Please try logging in.")
-                self.registerUser()
+                print("Invalid email format. Please try again.\n")
+                return self.registerUser()
+                  
+
             else:
                 password = input("Enter your password: ")
                 tempPassword = input("Confirm your password: ")
 
-            if password != tempPassword:
-                        print("Passwords do not match. Please try again.")
-                        self.registerUser()
+                # Check for empty password
+                if not password:
+                    print("Password cannot be empty. Please try again.\n")
+                    return self.registerUser()
 
-            # If file is not empty, just append the user data
-            else:
-                with open("users.csv", "a", newline="") as file:
-                    writer = csv.writer(file)
-                    writer.writerow([name, email, password, "user"])
-                    print("User registered successfully!")
-                    self.userMenu()
+                else:
+                    if password != tempPassword:
+                                print("Passwords do not match. Please try again.\n")
+                                return self.registerUser()
+                    
+                    elif any(user["email"] == email for user in self.usersList):
+                        print("Email already exists. Please try again with a different email.\n")
+                        return self.registerUser()
 
+                    # If all validations pass, register the user
+                    else:
+                        self.save(name, email, password)
+                        print("Registration successful! You can now log in.\n")
+
+                        return self.mainMenu()
+
+    # Save new user to the CSV file
+    def save(self, name, email, password):
+        with open("users.csv", "a", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerow([name, email, password, "user"])
+        # Reload users list after adding a new user
+        self.usersList = []
+        self.loadUsers()
 
     # Validate email format using a regular expression
     def validEmail(self, email):
@@ -125,92 +156,93 @@ class user():
 
     # User login function
     def login(self):
-        print("User Login\n")
+        print("\nUser Login")
         email = input("Enter your email: ").strip().lower()
         # Validate email format
         if not self.validEmail(email):
-            print("Invalid email format. Please try again.")
-            self.login()
+            print("Invalid email format. Please try again.\n")
+            return self.login()
+
+        # Check for empty email
+        elif not email:
+            print("Email cannot be empty. Please try again.\n")
+            return self.login()
 
         else:
             password = input("Enter your password: ")
 
-            # Check email and password against the CSV file
-            with open("users.csv", "r") as file:
-                reader = csv.DictReader(file)
-                for row in reader:
-                    if row["email"] == email and row["password"] == password:
-                        print(f"Welcome back, {row['name']}!\n")
-                        if row["role"] == "admin":
+            # Check for empty password
+            if not password:
+                print("Password cannot be empty. Please try again.\n")
+                return self.login()
+            else:
+                # Authenticate user
+                for user in self.usersList:
+                    if user["email"] == email and user["password"] == password:
+                        print(f"Login successful! Welcome, {user['name']}.\n")
+                        if user["role"] == "admin":
                             self.admMenu()
                         else:
                             self.userMenu()
+                        return
+                print("Invalid email or password. Please try again.\n")
+                return self.login()
+
 
     # User Menu
     def userMenu(self):
         while True:
             print("""
-User Menu: 
+User Menu:
 1. Purchase Ticket
-2. 
-3. Back to Main Menu
-4. Exit
+2. Logout
+3. Exit
             """)
             choice = input("Enter your choice: ")
             if choice == "1":
-                print("Ticket Purchase")
-                pass
+                print("Purchase Ticket")
             elif choice == "2":
-                print("")
-                pass
+                print("Logout")
+                self.mainMenu()
             elif choice == "3":
-                print("Returning to Main Menu.")
-                return
-            elif choice == "4":
                 print("Exiting the system. Goodbye!")
                 exit()
             else:
                 print("Invalid choice. Please try again.")
-                self.userMenu()
+                return self.userMenu()
 
 
     # Admin Menu
     def admMenu(self):
         while True:
             print("""
-User Menu: 
+Admin Menu:
 1. Update Ticket Price
-2. 
-3. Back to Main Menu
+2. Purchase Chart
+3. Logout
 4. Exit
             """)
             choice = input("Enter your choice: ")
             if choice == "1":
                 print("Update Ticket Price")
-                pass
             elif choice == "2":
-                print("")
-                pass
+                print("Purchase Chart")
             elif choice == "3":
-                print("Returning to Main Menu.")
-                return
+                print("Logout")
+                self.mainMenu()
             elif choice == "4":
                 print("Exiting the system. Goodbye!")
                 exit()
             else:
                 print("Invalid choice. Please try again.")
-                self.admMenu()
+                return self.admMenu()
 
 
 
-# Main function
-class main:
-    def __init__(self, user):  
-        self.user = user
-
-        # Main loop
-        while True:        
-            print("Welcome to the Bus Ticket Booking System")
+    # Main Menu
+    def mainMenu(self):        
+        print("Welcome to the Bus Ticket Booking System")
+        while True:
             print("""
 Main Menu:
 1. Register User
@@ -219,22 +251,17 @@ Main Menu:
             """)
             choice = input("Enter your choice: ")
             if choice == "1":
-                self.user.registerUser()
-                pass
+                self.registerUser()
             elif choice == "2":
-                self.user.login() 
-                pass
+                self.login() 
             elif choice == "3":
                 print("Exiting the system. Goodbye!")
-                break
+                exit()
             else:
                 print("Invalid choice. Please try again.")
-
-
-        
-# Call the function to remove ID columns from the CSV file
-removeIdColumns()
+                return self.mainMenu()
+       
 
 # Run the main program
 if __name__ == "__main__":
-    main(user())
+    main().mainMenu()
