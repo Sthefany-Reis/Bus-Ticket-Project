@@ -9,14 +9,6 @@ from datetime import datetime
 # Admin login details (FOR NOW)
 admLogin = {"name": "admin", "email": "admin@email.com", "password": "adm1", "role": "admin"}
 
-
-# User class
-class user():
-    def __init__(self, name, email, password, role):
-        self.name = name
-        self.email = email
-        self.password = password
-        self.role = role
     
 # Category class
 class category():
@@ -46,6 +38,7 @@ class topUp:
 # Main class
 class main:
     def __init__(self): 
+        self.purchaseList = []
         self.usersList = []
         self.categories = []
         self.topUps = []
@@ -68,22 +61,17 @@ class main:
                 # Create an empty file if updated_file.csv does not exist
                 if not os.path.exists("updated_file.csv"):
                     open("updated_file.csv", "a").close()
-
                 # Open the CSV file for reading and writing
                 with open("mobile_products.csv", "r") as file, \
                         open("updated_file.csv", "w", newline="") as newFile:
                     reader = csv.DictReader(file)
-
-
                     # Check if the new file is empty before writing
                     if os.path.getsize("updated_file.csv") == 0:
-
                         columns = []
                         # New header without the deleted columns
                         for column in reader.fieldnames:
                             if column not in deleteIdColumns:
                                 columns.append(column)
-            
                         # Write the updated content to the new file
                         writer = csv.DictWriter(newFile, fieldnames=columns)
                         writer.writeheader()
@@ -91,20 +79,14 @@ class main:
                             for column in deleteIdColumns:
                                 if column in row:
                                     del row[column]
-                            writer.writerow(row)
-                    
+                            writer.writerow(row)  
                     # If the new file already has data, do not write again
                     else: 
                         print("updated_file.csv already has data, skipping write operation.")
-
             # Handle error that occurs while reading the file
             except FileNotFoundError:
                 print("something went wrong, cannot read the file")
                 return
-
-
-
-
 
     # Create users.csv file if it does not exist
     def userFile(self):
@@ -125,6 +107,7 @@ class main:
  
     # Load categories from the CSV file
     def loadCategories(self):
+        # Avoid duplicate categories
         seen = set()
         code = 0
         with open("updated_file.csv", "r") as file:
@@ -161,31 +144,42 @@ class main:
                     code))
                 code += 1
 
-    def displayChoice(selectedTop):
-        # Convert entitlement start and end dates to datetime objects
-        start_date =  datetime.fromisoformat(selectedTop.entStart)
-        end_date = datetime.fromisoformat(selectedTop.entEnd)
+    def displayChoice(self, selectedTop):
+        # Only parse dates for fixed_date entitlements and when values exist
+        startDate = endDate = None
+        # Parse dates if entitlement type is fixed_date
+        if selectedTop.entType and selectedTop.entType.lower() == "fixed_date":
+            if selectedTop.entStart and selectedTop.entEnd:
+                try:
+                    startDate = datetime.fromisoformat(selectedTop.entStart)
+                    endDate = datetime.fromisoformat(selectedTop.entEnd)
+                except ValueError:
+                    print("Top-Up has invalid date format; dates unavailable.")
+            else:
+                print("Top-Up has no start/end dates; dates unavailable.")
         print(
             f"Title: {selectedTop.title}\n"
             f"Description: {selectedTop.description}\n"
             f"Price: {selectedTop.price / 100:.2f} pounds\n"
             f"Passenger Class: {selectedTop.className}")
-
-        # Display entitlement details based on entitlement type
-        if selectedTop.entType.lower() == "fixed_date":
-            print(
-                f"Valid: From {start_date.strftime('%d %b %Y %H:%M')} "
-                f"to {end_date.strftime('%d %b %Y %H:%M')}\n")
-
-        elif selectedTop.entType.lower() == "flexible":
-            print(
-                f"Quantity: {selectedTop.entQuantity} passes, "
-                f"each valid for {selectedTop.entValue} {selectedTop.entUnit} from the first use.\n")
+        # Display entitlement details based on type
+        if selectedTop.entType and selectedTop.entType.lower() == "fixed_date":
+            if startDate and endDate:
+                print(f"Valid: From {startDate.strftime('%d %b %Y %H:%M')} to {endDate.strftime('%d %b %Y %H:%M')}\n")
+            else:
+                print("Valid: Date information not available.\n")
+        elif selectedTop.entType and selectedTop.entType.lower() == "flexible":
+            print(f"Quantity: {selectedTop.entQuantity} passes, each valid for {selectedTop.entValue} {selectedTop.entUnit} from the first use.\n")
         else:
             print("Unknown entitlement type.\n")
+        # Ask if the user wants to purchase another Top-Up  
+        continuePurchase = input("Do you want to purchase another Top-Up? (yes/no): ").strip().lower()
+        if continuePurchase in ("yes", "y"):
+            return self.catChoice()
+        else:
+            print("Returning to User Menu.\n")
+            return self.userMenu()
           	
-        
-
     # Save new user to the CSV file
     def save(self, name, email, password):
         with open("users.csv", "a", newline="") as file:
@@ -200,51 +194,38 @@ class main:
         valid = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
         return re.match(valid, email) is not None
 
-
-
-
     # Function to register a new user
     def registerUser(self): 
             print("\nRegister New User")
             name = input("Enter your name: ").strip()
-
             # Check for empty name
             if not name:
                 print("Name cannot be empty. Please try again.\n")
                 return self.registerUser()
-            
             else:
                 email = input("Enter your email: ").strip().lower()
-
                 # Check for empty email
                 if not email:
                     print("Email cannot be empty. Please try again.\n")
                     return self.registerUser()
-
                 # Validate email format
                 elif not self.validEmail(email):
                     print("Invalid email format. Please try again.\n")
                     return self.registerUser()
-                  
-
                 else:
                     password = input("Enter your password: ")
                     tempPassword = input("Confirm your password: ")
-
                     # Check for empty password
                     if not password:
                         print("Password cannot be empty. Please try again.\n")
                         return self.registerUser()
-
                     else:
                         if password != tempPassword:
                                     print("Passwords do not match. Please try again.\n")
                                     return self.registerUser()
-                    
                         elif any(user["email"] == email for user in self.usersList):
                             print("Email already exists. Please try again with a different email.\n")
                             return self.registerUser()
-
                         # If all validations pass, register the user
                         else:
                             self.save(name, email, password)
@@ -272,85 +253,83 @@ class main:
             if not password:
                 print("Password cannot be empty. Please try again.\n")
                 return self.login()
-            else:
+            elif password:
                 # Authenticate user
                 for user in self.usersList:
                     if user["email"] == email and user["password"] == password:
                         print(f"Login successful! Welcome, {user['name']}.\n")
                         if user["role"] == "admin":
-                            self.admMenu()
+                            return self.admMenu()  
                         else:
-                            self.userMenu()
-                print("Invalid email or password. Please try again.\n")
-                return self.login()
+                            return self.userMenu()
+                else:
+                    print("Invalid email or password. Please try again.\n")
+                    return self.login()
 
     # Category and Top-Up Selection
     def catChoice(self): 
         print("\nCategories:")
         for cat in self.categories:
             print(f"{cat.code}. {cat.title}")
-        while True:
-            try:
-                choice = input("\nSelect a Category by entering its code or 'b' to go back: ")
-                # Validate category choice
-                if choice.isdigit():
-                    choice = int(choice)
-                    if choice < 0 or choice >= len(self.categories):
-                        print("Invalid choice. Please try again.")
-                        return self.catChoice()
-                    else:
-                        selectedCat = next(
-                            cat                # take this category
-                            for cat in self.categories   # from the list of categories
-                            if cat.code == choice )       # only if the code matches the user's choice
-                        print(f"\nYou selected category: {selectedCat.title}")
-                        print(f"Description: {selectedCat.description}\n")
-                        print("Available Top-Ups:")
-                        for topup in self.topUps:
-                            if topup.category == selectedCat.title:
-                                print(f"{topup.code}. {topup.title} - Price: {topup.price/100:.2f} pounds")
-                        choice = int(input("\nSelect a Top-Up by entering its code : "))
-                        # Validate top-up choice
-                        if choice < 0 or choice >= len(self.topUps) and choice :
-                            print("Invalid choice. Please try again.")
-                            return self.catChoice()
-                        # check if the selected top-up belongs to the selected category
-                        elif not any(topup.code == choice and topup.category == selectedCat.title for topup in self.topUps): 
-                            print("Invalid choice. Please try again.")
-                            return self.catChoice()
-                        else:
-                            selectedTop = next(
-                                topup                  # take this top-up
-                                for topup in self.topUps    # from the list of top-ups
-                                if topup.code == choice     # only if the code matches the user's choice
-                                and topup.category == selectedCat.title)    # and belongs to the selected category
-                            print(f"You selected Top-Up: {selectedTop.title} with Price: {selectedTop.price/100:.2f} pounds")
-                            print(f"Description: {selectedTop.description}\n")
-                            confirm = input("Do you want to purchase this Top-Up? (yes/no): ").strip().lower()
-                            if confirm == "yes" or "y":
-                                print("Top-Up purchased successfully!\n")
-                                print("Your ticket details:")
-                                return main.displayChoice(selectedTop)
-                            elif confirm == "no" or "n":
-                                print("Purchase cancelled.\n")
-                                return self.catChoice()
-                            else:
-                                print("Invalid choice. Please try again.")
-                                return self.catChoice()
-                
-                # Go back to User Menu
-                elif choice == "b" or "B":
-                    print("Going back to User Menu.\n")
-                    return self.userMenu()
-                # Invalid input
-                else:
-                    print("Invalid choice. Please try again.")
-                    return self.catChoice()
+        try:
+            choice = input("\nSelect a Category by entering its code or 'b' to go back: ")
+                #Handle invalid input that cannot be converted to int  
+        except (ValueError, IndexError):
+            print("Invalid choice. Please try again.")
+            return 
 
-            #Handle invalid input that cannot be converted to int  
-            except (ValueError, IndexError):
+        # Validate category choice
+        if choice.isdigit():
+            choice = int(choice)
+            if choice < 0 or choice >= len(self.categories):
                 print("Invalid choice. Please try again.")
                 return self.catChoice()
+            else:
+                selectedCat = next(
+                    cat                # take this category
+                    for cat in self.categories   # from the list of categories
+                    if cat.code == choice )       # only if the code matches the user's choice
+                print(f"\nYou selected category: {selectedCat.title}")
+                print(f"Description: {selectedCat.description}\n")
+                print("Available Top-Ups:")
+                for topup in self.topUps:
+                    if topup.category == selectedCat.title:
+                        print(f"{topup.code}. {topup.title} - Price: {topup.price/100:.2f} pounds")
+                choice = int(input("\nSelect a Top-Up by entering its code : "))
+                # check if the selected top-up belongs to the selected category
+                if not any(topup.code == choice and topup.category == selectedCat.title for topup in self.topUps): 
+                    print("Invalid choice. Please try again.")
+                    return self.catChoice()
+                elif choice < 0 or choice >= len(self.topUps):
+                    print("Invalid choice. Please try again.")
+                    return self.catChoice()
+                else:
+                    selectedTop = next(
+                        topup                  # take this top-up
+                        for topup in self.topUps    # from the list of top-ups
+                        if topup.code == choice     # only if the code matches the user's choice
+                        and topup.category == selectedCat.title)    # and belongs to the selected category
+                    print(f"You selected Top-Up: {selectedTop.title} with Price: {selectedTop.price/100:.2f} pounds")
+                    print(f"Description: {selectedTop.description}\n")
+                    confirm = input("Do you want to proceed with the purchase? yes/y to confirm or any other key to cancel: ").strip().lower()
+                    if confirm in ("yes", "y"):
+                        print("Purchase successful!\n")
+                        return self.displayChoice(selectedTop)
+                    else:
+                        print("Purchase cancelled.\n")
+                        return self.catChoice()
+
+                          
+                
+        # Go back to User Menu
+        elif choice == "b" or "B":
+            print("Going back to User Menu.\n")
+            return self.userMenu()
+        # Invalid input
+        else:
+            print("Invalid choice. Please try again.")
+            return self.catChoice()
+
 
 
 
