@@ -38,7 +38,8 @@ class topUp:
 # Main class
 class main:
     def __init__(self): 
-        self.purchaseList = []
+        self.purchases = {}
+        self.tempPurchases = {}
         self.usersList = []
         self.categories = []
         self.topUps = []
@@ -48,6 +49,8 @@ class main:
         self.loadUsers()
         self.loadCategories()
         self.loadTopUps()
+        self.purchaseFile()
+        self.loadPurchases()
 
     # Function to remove specific columns from the CSV file
     def removeIdColumns(self):
@@ -97,6 +100,12 @@ class main:
                 # Add admin login details to the file
                 writer.writerow([admLogin["name"], admLogin["email"], admLogin["password"], admLogin["role"]])
 
+    # Create purchase.csv file if it does not exist
+    def purchaseFile(self):
+        if not os.path.exists("purchase.csv"):
+            with open("purchase.csv", "w", newline="") as file:
+                writer = csv.writer(file)
+                writer.writerow(["title", "quantity"])
 
    # Load users from the CSV file
     def loadUsers(self):
@@ -144,42 +153,14 @@ class main:
                     code))
                 code += 1
 
-    def displayChoice(self, selectedTop):
-        # Only parse dates for fixed_date entitlements and when values exist
-        startDate = endDate = None
-        # Parse dates if entitlement type is fixed_date
-        if selectedTop.entType and selectedTop.entType.lower() == "fixed_date":
-            if selectedTop.entStart and selectedTop.entEnd:
-                try:
-                    startDate = datetime.fromisoformat(selectedTop.entStart)
-                    endDate = datetime.fromisoformat(selectedTop.entEnd)
-                except ValueError:
-                    print("Top-Up has invalid date format; dates unavailable.")
-            else:
-                print("Top-Up has no start/end dates; dates unavailable.")
-        print(
-            f"Title: {selectedTop.title}\n"
-            f"Description: {selectedTop.description}\n"
-            f"Price: {selectedTop.price / 100:.2f} pounds\n"
-            f"Passenger Class: {selectedTop.className}")
-        # Display entitlement details based on type
-        if selectedTop.entType and selectedTop.entType.lower() == "fixed_date":
-            if startDate and endDate:
-                print(f"Valid: From {startDate.strftime('%d %b %Y %H:%M')} to {endDate.strftime('%d %b %Y %H:%M')}\n")
-            else:
-                print("Valid: Date information not available.\n")
-        elif selectedTop.entType and selectedTop.entType.lower() == "flexible":
-            print(f"Quantity: {selectedTop.entQuantity} passes, each valid for {selectedTop.entValue} {selectedTop.entUnit} from the first use.\n")
-        else:
-            print("Unknown entitlement type.\n")
-        # Ask if the user wants to purchase another Top-Up  
-        continuePurchase = input("Do you want to purchase another Top-Up? (yes/no): ").strip().lower()
-        if continuePurchase in ("yes", "y"):
-            return self.catChoice()
-        else:
-            print("Returning to User Menu.\n")
-            return self.userMenu()
-          	
+    # Load purchases from the CSV file
+    def loadPurchases(self):
+        with open("purchase.csv", "r") as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                self.purchases[row["title"]] = int(row["quantity"])
+
+
     # Save new user to the CSV file
     def save(self, name, email, password):
         with open("users.csv", "a", newline="") as file:
@@ -268,69 +249,139 @@ class main:
 
     # Category and Top-Up Selection
     def catChoice(self): 
-        print("\nCategories:")
-        for cat in self.categories:
-            print(f"{cat.code}. {cat.title}")
-        try:
-            choice = input("\nSelect a Category by entering its code or 'b' to go back: ")
-                #Handle invalid input that cannot be converted to int  
-        except (ValueError, IndexError):
-            print("Invalid choice. Please try again.")
-            return 
-
-        # Validate category choice
-        if choice.isdigit():
-            choice = int(choice)
-            if choice < 0 or choice >= len(self.categories):
-                print("Invalid choice. Please try again.")
-                return self.catChoice()
-            else:
-                selectedCat = next(
-                    cat                # take this category
-                    for cat in self.categories   # from the list of categories
-                    if cat.code == choice )       # only if the code matches the user's choice
-                print(f"\nYou selected category: {selectedCat.title}")
-                print(f"Description: {selectedCat.description}\n")
-                print("Available Top-Ups:")
-                for topup in self.topUps:
-                    if topup.category == selectedCat.title:
-                        print(f"{topup.code}. {topup.title} - Price: {topup.price/100:.2f} pounds")
-                choice = int(input("\nSelect a Top-Up by entering its code : "))
-                # check if the selected top-up belongs to the selected category
-                if not any(topup.code == choice and topup.category == selectedCat.title for topup in self.topUps): 
-                    print("Invalid choice. Please try again.")
-                    return self.catChoice()
-                elif choice < 0 or choice >= len(self.topUps):
-                    print("Invalid choice. Please try again.")
-                    return self.catChoice()
-                else:
-                    selectedTop = next(
-                        topup                  # take this top-up
-                        for topup in self.topUps    # from the list of top-ups
-                        if topup.code == choice     # only if the code matches the user's choice
-                        and topup.category == selectedCat.title)    # and belongs to the selected category
-                    print(f"You selected Top-Up: {selectedTop.title} with Price: {selectedTop.price/100:.2f} pounds")
-                    print(f"Description: {selectedTop.description}\n")
-                    confirm = input("Do you want to proceed with the purchase? yes/y to confirm or any other key to cancel: ").strip().lower()
-                    if confirm in ("yes", "y"):
-                        print("Purchase successful!\n")
-                        return self.displayChoice(selectedTop)
-                    else:
-                        print("Purchase cancelled.\n")
+        while True:
+            print("\nCategories:")
+            for cat in self.categories:
+                print(f"{cat.code}. {cat.title}")
+            try:
+                choice = input("\nSelect a Category by entering its code or 'b' to go back: ")
+                # Validate category choice
+                if choice.isdigit():
+                    choice = int(choice)
+                    if choice < 0 or choice >= len(self.categories):
+                        print("Invalid choice. Please try again.")
                         return self.catChoice()
+                    else:
+                        selectedCat = next(
+                            cat                # take this category
+                            for cat in self.categories   # from the list of categories
+                            if cat.code == choice )       # only if the code matches the user's choice
+                        print(f"\nYou selected category: {selectedCat.title}")
+                        print(f"Description: {selectedCat.description}\n")
+                        print("Available Top-Ups:")
+                        for topup in self.topUps:
+                            if topup.category == selectedCat.title:
+                                print(f"{topup.code}. {topup.title} - Price: {topup.price/100:.2f} pounds")
+                        choice = input("\nSelect a Top-Up by entering its code or 'b' to go back: ")
+                        # Validate top-up choice
+                        if not choice.isdigit():
+                            if choice in ('b', 'B'):
+                                print("Going back to Categories.\n")
+                                return self.catChoice()
+                            else:
+                                print("Invalid choice. Please try again.")
+                                return self.catChoice()
+                        else:
+                            choice = int(choice)
+                        # check if the selected top-up belongs to the selected category
+                        if not any(topup.code == choice and topup.category == selectedCat.title for topup in self.topUps): 
+                            print("Invalid choice. Please try again.")
+                            return self.catChoice()
+                        elif choice < 0 or choice >= len(self.topUps):
+                            print("Invalid choice. Please try again.")
+                            return self.catChoice()
+                        else:
+                            selectedTop = next(
+                                topup                  # take this top-up
+                                for topup in self.topUps    # from the list of top-ups
+                                if topup.code == choice     # only if the code matches the user's choice
+                                and topup.category == selectedCat.title)    # and belongs to the selected category
+                            print(f"You selected Top-Up: {selectedTop.title}")
+                            print(f"Description: {selectedTop.description}")
+                            print(f"Price: {selectedTop.price/100:.2f} pounds")
+                            print(f"Passenger Class: {selectedTop.className}\n")
+                            confirm = input("Do you want to proceed with the purchase? \nyes/y to confirm or any other key to cancel: ").strip().lower()
+                            if confirm in ("yes", "y"):
+                                print("Purchase successful!\n")
+                                # Existing purchase, increment quantity
+                                if selectedTop.title in self.purchases:
+                                    self.purchases[selectedTop.title] += 1
+                                    self.tempPurchases[selectedTop.title] = self.tempPurchases.get(selectedTop.title, 0) + 1
+                                # New purchase, set quantity to 1
+                                else:
+                                    self.purchases[selectedTop.title] = 1
+                                    self.tempPurchases[selectedTop.title] = 1
+                                # Save updated purchases to the CSV file
+                                with open("purchase.csv", "w", newline="") as file:
+                                    writer = csv.writer(file)
+                                    writer.writerow(["title", "quantity"])
+                                    for title, quantity in self.purchases.items():
+                                        writer.writerow([title, quantity])
+                                return self.displayPurchase(selectedTop)
+                            else:
+                                print("Purchase cancelled.\n")
+                                return self.catChoice()
+                # Go back to User Menu
+                elif choice in ('b', 'B'):
+                    print("Going back to User Menu.\n")
+                    return self.userMenu()
+                # Invalid input
+                else:
+                    print("Invalid choice. Please try again.")
+                    return self.catChoice()
 
-                          
-                
-        # Go back to User Menu
-        elif choice == "b" or "B":
-            print("Going back to User Menu.\n")
+            except ValueError:
+                print("Invalid input. Please enter a valid code.")
+                return self.catChoice()
+
+
+    def displayPurchase(self, selectedTop):
+        # Only parse dates for fixed_date entitlements and when values exist
+        startDate = endDate = None
+        # Parse dates if entitlement type is fixed_date
+        if selectedTop.entType and selectedTop.entType.lower() == "fixed_date":
+            if selectedTop.entStart and selectedTop.entEnd:
+                try:
+                    startDate = datetime.fromisoformat(selectedTop.entStart)
+                    endDate = datetime.fromisoformat(selectedTop.entEnd)
+                except ValueError:
+                    print("Top-Up has invalid date format; dates unavailable.")
+            else:
+                print("Top-Up has no start/end dates; dates unavailable.")
+        print(
+            f"Title: {selectedTop.title}\n"
+            f"Description: {selectedTop.description}\n"
+            f"Price: {selectedTop.price / 100:.2f} pounds\n"
+            f"Passenger Class: {selectedTop.className}")
+        # Display entitlement details based on type
+        if selectedTop.entType and selectedTop.entType.lower() == "fixed_date":
+            if startDate and endDate:
+                print(f"Valid: From {startDate.strftime('%d %b %Y %H:%M')} to {endDate.strftime('%d %b %Y %H:%M')}\n")
+            else:
+                print("Valid: Date information not available.\n")
+        elif selectedTop.entType and selectedTop.entType.lower() == "flexible":
+            print(f"Quantity: {selectedTop.entQuantity} passes, each valid for {selectedTop.entValue} {selectedTop.entUnit} from the first use.\n")
+        else:
+            print("Unknown entitlement type.\n")
+        # Ask if the user wants to purchase another Top-Up  
+        continuePurchase = input("Do you want to purchase another Top-Up? (yes/no): ").strip().lower()
+        if continuePurchase in ("yes", "y"):
+            return self.catChoice()
+        elif continuePurchase in ("no", "n"):
+            # Display purchase summary
+            print("\nPurchase Summary:") 
+            total = 0
+            # Show only the Top-Ups purchased in this session
+            for title, quantity in self.tempPurchases.items():
+                print(f"{title}: {quantity}")
+                total += quantity
+            self.tempPurchases = {}  # Clear temporary purchases after displaying
+            print(f"\nTotal Top-Ups Purchased: {total}\n")
+            print("Thank you for your purchase! Returning to User Menu.\n")
             return self.userMenu()
-        # Invalid input
         else:
             print("Invalid choice. Please try again.")
-            return self.catChoice()
-
-
+            return self.displayPurchase(selectedTop)
 
 
 
