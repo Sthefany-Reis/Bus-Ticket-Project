@@ -4,6 +4,8 @@ import csv
 import os
 import re
 from datetime import datetime
+import matplotlib.pyplot as plt
+
 
 
 # Admin login details (FOR NOW)
@@ -56,40 +58,42 @@ class main:
     def removeIdColumns(self):
         deleteIdColumns = ["category_id", "topup_passenger_class_id", "topup_id"]
         # Handle the error if the products file does not exist
-        if not os.path.exists("mobile_products.csv"):
-            print("mobile_products.csv file does not exist")
-        else:
-        # Read the file content
-            try:
-                # Create an empty file if updated_file.csv does not exist
-                if not os.path.exists("updated_file.csv"):
-                    open("updated_file.csv", "a").close()
-                    # Open the CSV file for reading and writing
-                    with open("mobile_products.csv", "r") as file, \
-                            open("updated_file.csv", "w", newline="") as newFile:
-                        reader = csv.DictReader(file)
-                        # Check if the new file is empty before writing
-                        if os.path.getsize("updated_file.csv") == 0:
-                            columns = []
-                            # New header without the deleted columns
-                            for column in reader.fieldnames:
-                                if column not in deleteIdColumns:
-                                    columns.append(column)
-                            # Write the updated content to the new file
-                            writer = csv.DictWriter(newFile, fieldnames=columns)
-                            writer.writeheader()
-                            for row in reader:
-                                for column in deleteIdColumns:
-                                    if column in row:
-                                        del row[column]
-                                writer.writerow(row)  
-                    # If the new file already has data, do not write again
-                else: 
-                    print("updated_file.csv already exists, skipping write operation.")
-            # Handle error that occurs while reading the file
-            except FileNotFoundError:
-                print("something went wrong, cannot read the file")
-                return
+        while True:
+            if not os.path.exists("mobile_products.csv"):
+                print("mobile_products.csv file does not exist")
+                break
+            else:
+            # Read the file content
+                try:
+                    # Create an empty file if updated_file.csv does not exist
+                    if not os.path.exists("updated_file.csv"):
+                        open("updated_file.csv", "a").close()
+                        # Open the CSV file for reading and writing
+                        with open("mobile_products.csv", "r") as file, \
+                                open("updated_file.csv", "w", newline="") as newFile:
+                            reader = csv.DictReader(file)
+                            # Check if the new file is empty before writing
+                            if os.path.getsize("updated_file.csv") == 0:
+                                columns = []
+                                # New header without the deleted columns
+                                for column in reader.fieldnames:
+                                    if column not in deleteIdColumns:
+                                        columns.append(column)
+                                # Write the updated content to the new file
+                                writer = csv.DictWriter(newFile, fieldnames=columns)
+                                writer.writeheader()
+                                for row in reader:
+                                    for column in deleteIdColumns:
+                                        if column in row:
+                                            del row[column]
+                                    writer.writerow(row)  
+                        # If the new file already has data, do not write again
+                    else: 
+                        break
+                # Handle error that occurs while reading the file
+                except FileNotFoundError:
+                    print("something went wrong, cannot read the file")
+                    return
 
     # Create users.csv file if it does not exist
     def userFile(self):
@@ -259,7 +263,7 @@ class main:
                 if choice.isdigit():
                     choice = int(choice)
                     if choice < 0 or choice >= len(self.categories):
-                        print("Invalid choice. Please try again.")
+                        print("Invalid choice. Please try again.\n")
                         return self.catChoice()
                     else:
                         selectedCat = next(
@@ -279,16 +283,16 @@ class main:
                                 print("Going back to Categories.\n")
                                 return self.catChoice()
                             else:
-                                print("Invalid choice. Please try again.")
+                                print("Invalid choice. Please try again.\n")
                                 return self.catChoice()
                         else:
                             choice = int(choice)
                         # check if the selected top-up belongs to the selected category
                         if not any(topup.code == choice and topup.category == selectedCat.title for topup in self.topUps): 
-                            print("Invalid choice. Please try again.")
+                            print("Invalid choice. Please try again.\n")
                             return self.catChoice()
                         elif choice < 0 or choice >= len(self.topUps):
-                            print("Invalid choice. Please try again.")
+                            print("Invalid choice. Please try again.\n")
                             return self.catChoice()
                         else:
                             selectedTop = next(
@@ -296,11 +300,11 @@ class main:
                                 for topup in self.topUps    # from the list of top-ups
                                 if topup.code == choice     # only if the code matches the user's choice
                                 and topup.category == selectedCat.title)    # and belongs to the selected category
-                            print(f"You selected Top-Up: {selectedTop.title}"
-                                  f"Description: {selectedTop.description}"
-                                  f"Price: {selectedTop.price/100:.2f} pounds"
+                            print(f"\nYou selected:  \n\nTop-Up: {selectedTop.title}\n" 
+                                  f"Description: {selectedTop.description}\n"
+                                  f"Price: {selectedTop.price/100:.2f} pounds\n"
                                   f"Passenger Class: {selectedTop.className}\n")
-                            confirm = input("Do you want to proceed with the purchase? \nyes/y to confirm or any other key to cancel: ").strip().lower()
+                            confirm = input("Do you want to proceed with the purchase? \nPress yes to confirm or any other key to cancel: ").strip().lower()
                             if confirm in ("yes", "y"):
                                 print("Purchase successful!\n")
                                 # Existing purchase, increment quantity
@@ -327,16 +331,16 @@ class main:
                     return self.userMenu()
                 # Invalid input
                 else:
-                    print("Invalid choice. Please try again.")
+                    print("Invalid choice. Please try again.\n")
                     return self.catChoice()
             # Handle non-integer input
             except ValueError:
-                print("Invalid input. Please enter a valid code.")
+                print("Invalid input. Please enter a valid code.\n")
                 return self.catChoice()
 
 
     def displayPurchase(self, selectedTop):
-        # Only parse dates for fixed_date entitlements and when values exist
+            # Only parse dates for fixed_date entitlements and when values exist
         startDate = endDate = None
         # Parse dates if entitlement type is fixed_date
         if selectedTop.entType and selectedTop.entType.lower() == "fixed_date":
@@ -384,23 +388,66 @@ class main:
             print("Invalid choice. Please try again.")
             return self.displayPurchase(selectedTop)
 
+
+
+    # Generate a bar chart for the admin with the titles and quantities sold
+    def generateGraph(self):
+        titles = []
+        quantities = []
+
+        # Lists store the information from the file
+        with open("purchase.csv", "r") as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                titles.append(row["title"])
+                quantities.append(int(row["quantity"]))
+
+        # Check if the lists are empty
+        if not titles and not quantities:
+            print("No sales data to display.")
+            return
+
+        plt.figure(figsize = (10, 5), facecolor = "lightgrey")
+        plt.bar(titles, quantities, width = 0.5, color = "orange" ) # Creates an orange bar chart 
+        plt.xlabel("TopUps")
+        plt.ylabel("Quantity Sold")
+        plt.title("Purchases Report:", loc = "center")
+        plt.xticks(rotation=60, ha="right") 
+        plt.yticks(range(0, max(quantities) + 1))
+        plt.tight_layout()
+        plt.grid(color = 'pink', linestyle = '--', linewidth = 0.5)
+        plt.show()
+
+
+
     # User Menu
     def userMenu(self):
         while True:
             print("""
 User Menu:
 1. Purchase Ticket
-2. Logout
-3. Exit
+2. View Current Purchase Summary
+3. Logout
+4. Exit
             """)
             choice = input("Enter your choice: ")
             if choice == "1":
                 print("\nPurchase Ticket")
                 self.catChoice()
             elif choice == "2":
+                if not self.tempPurchases:
+                    print("\nNo current purchases.\n")
+                    continue
+                print("\nPurchase Summary:")
+                total = 0
+                for title, quantity in self.tempPurchases.items():
+                    print(f"{title}: {quantity}")
+                    total += quantity
+                print(f"\nTotal Top-Ups Purchased: {total}\n")
+            elif choice == "3":
                 print("Logout")
                 self.mainMenu()
-            elif choice == "3":
+            elif choice == "4":
                 print("Exiting the system. Goodbye!")
                 exit()
             else:
@@ -415,7 +462,7 @@ User Menu:
 Admin Menu:
 1. View TopUps Available
 2. Update Ticket Price
-3. Purchase Chart
+3. Purchase Chart / View Purchases
 4. Logout
 5. Exit
             """)
@@ -489,13 +536,19 @@ Admin Menu:
                                 else:
                                     print("Thank you for updating the price. Returning to Admin Menu.\n")
                                     return self.admMenu()
-                else:
-                    print("Invalid choice. Please try again.")
-
-
+             
 
             elif choice == "3":
-                print("Purchase Chart")
+                print("Purchase Chart / View Purchases\n")
+                print("Purchases Report:\n")
+                for title, quantity in self.purchases.items():
+                    print(f"{title}: {quantity} sold")
+
+                print("\nPurchases Graph:\n")
+                self.generateGraph()
+                print("Press enter to Return to Admin Menu.")
+                input()
+
             elif choice == "4":
                 print("Logout")
                 self.mainMenu()

@@ -26,8 +26,4 @@ Creation of a bus booking system with a user and admin interface.
       1. Allow admin to view the topUp options available.
       2. Allow admin to change the topUp price.
       3. Store the updated topUp options in a file.
-      4. 
-
-
-
-
+      4. Generate a Graph with purchases and quantities to the admin.
