@@ -238,7 +238,7 @@ class main:
                 # Authenticate user
                 for user in self.usersList:
                     if user["email"] == email and user["password"] == password:
-                        print(f"Login successful! Welcome, {user['name']}.\n")
+                        print(f"\nLogin successful! Welcome, {user['name']}.")
                         if user["role"] == "admin":
                             return self.admMenu()  
                         else:
@@ -296,10 +296,10 @@ class main:
                                 for topup in self.topUps    # from the list of top-ups
                                 if topup.code == choice     # only if the code matches the user's choice
                                 and topup.category == selectedCat.title)    # and belongs to the selected category
-                            print(f"You selected Top-Up: {selectedTop.title}")
-                            print(f"Description: {selectedTop.description}")
-                            print(f"Price: {selectedTop.price/100:.2f} pounds")
-                            print(f"Passenger Class: {selectedTop.className}\n")
+                            print(f"You selected Top-Up: {selectedTop.title}"
+                                  f"Description: {selectedTop.description}"
+                                  f"Price: {selectedTop.price/100:.2f} pounds"
+                                  f"Passenger Class: {selectedTop.className}\n")
                             confirm = input("Do you want to proceed with the purchase? \nyes/y to confirm or any other key to cancel: ").strip().lower()
                             if confirm in ("yes", "y"):
                                 print("Purchase successful!\n")
@@ -329,7 +329,7 @@ class main:
                 else:
                     print("Invalid choice. Please try again.")
                     return self.catChoice()
-
+            # Handle non-integer input
             except ValueError:
                 print("Invalid input. Please enter a valid code.")
                 return self.catChoice()
@@ -342,6 +342,7 @@ class main:
         if selectedTop.entType and selectedTop.entType.lower() == "fixed_date":
             if selectedTop.entStart and selectedTop.entEnd:
                 try:
+                    # Convert ISO 8601 string to datetime object
                     startDate = datetime.fromisoformat(selectedTop.entStart)
                     endDate = datetime.fromisoformat(selectedTop.entEnd)
                 except ValueError:
@@ -396,7 +397,7 @@ User Menu:
             """)
             choice = input("Enter your choice: ")
             if choice == "1":
-                print("Purchase Ticket")
+                print("\nPurchase Ticket")
                 self.catChoice()
             elif choice == "2":
                 print("Logout")
@@ -414,20 +415,78 @@ User Menu:
         while True:
             print("""
 Admin Menu:
-1. Update Ticket Price
-2. Purchase Chart
-3. Logout
-4. Exit
+1. View TopUps Available
+2. Update Ticket Price
+3. Purchase Chart
+4. Logout
+5. Exit
             """)
             choice = input("Enter your choice: ")
             if choice == "1":
-                print("Update Ticket Price")
+                print("\nTop-Ups Available:\n")
+                # Display all top-ups with details
+                for topup in self.topUps:
+                    print(f"{topup.code}. {topup.title} - Class: {topup.className} - Price: {topup.price/100:.2f} pounds / {topup.price} pence")
+                print("Press Enter to return to Admin Menu.")
+                input()
             elif choice == "2":
-                print("Purchase Chart")
+                print("Update TopUp Price:")
+                # Display all top-ups with current prices
+                for topup in self.topUps:
+                    print(f"{topup.code}. {topup.title} - Class: {topup.className} - Current Price: {topup.price/100:.2f} pounds / {topup.price} pence")
+                choice = input("\nSelect a Top-Up to update by entering its code or 'b' to go back: ")
+                # Validate top-up choice
+                if not choice.isdigit():
+                    if choice in ('b', 'B'):
+                        print("Going back to Admin Menu.\n")
+                        return self.admMenu()
+                    else:
+                        print("Invalid choice. Please try again.")
+                        return self.admMenu()
+                else:
+                    choice = int(choice)
+                    # check if the selected top-up code is valid
+                    if choice < 0 or choice >= len(self.topUps):
+                        print("Invalid choice. Please try again.")
+                        return self.admMenu()
+                    else:
+                        # Get the selected top-up
+                        selectedTop = next(
+                            topup                  # take this top-up
+                            for topup in self.topUps    # from the list of top-ups
+                            if topup.code == choice)     # only if the code matches the user's choice
+                        print(f"\nYou selected: \nTop-Up: {selectedTop.title}"
+                              f"Class: {selectedTop.className}"
+                              f"Current Price: {selectedTop.price/100:.2f} pounds / {selectedTop.price} pence")
+                        newPrice = input("Enter the new price in pence: ")
+                        if not newPrice.isdigit() or int(newPrice) < 0:
+                            print("Invalid price. Please enter a valid positive integer.")
+                            return self.admMenu()
+                        else:
+                            selectedTop.price = int(newPrice)
+                            # Update the price in the CSV file
+                            with open("updated_file.csv", "r") as file:
+                                reader = csv.DictReader(file)
+                                rows = list(reader)
+                                with open("updated_file.csv", "w", newline="") as file:
+                                    writer = csv.DictWriter(file, fieldnames=reader.fieldnames)
+                                    writer.writeheader()
+                                    # Update the specific top-up price
+                                    for row in rows:
+                                        if row["topup_title"] == selectedTop.title and row["topup_passenger_class_name"] == selectedTop.className:
+                                            row["topup_price_in_pence"] = str(selectedTop.price)
+                                        writer.writerow(row)
+                            print(f"\nPrice of {selectedTop.title} for {selectedTop.className} was updated successfully to {selectedTop.price/100:.2f} pounds / {selectedTop.price} pence.\n")
+                            print("Press Enter to return to Admin Menu.")
+                            input()
+                            return self.admMenu()
+
             elif choice == "3":
+                print("Purchase Chart")
+            elif choice == "4":
                 print("Logout")
                 self.mainMenu()
-            elif choice == "4":
+            elif choice == "5":
                 print("Exiting the system. Goodbye!")
                 exit()
             else:
