@@ -19,13 +19,14 @@ Creation of a bus booking system with a user and admin interface.
       2. Display ticket details. 
       3. Allow users to choose the topUp Options.
       4. Confirm the selected ticket and topUp option.
-      5. Display Purchase Summary after finalizing the purchase.
+      5. Display Purchase Summary after finalizing the purchases.
       6. Store purchase details in a file for the admin to access later.
 
      - UseCase4:
       1. Allow admin to view the topUp options available.
       2. Allow admin to change the topUp price.
       3. Store the updated topUp options in a file.
+      4. 
 
 
 

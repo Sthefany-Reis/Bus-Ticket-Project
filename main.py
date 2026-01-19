@@ -64,28 +64,28 @@ class main:
                 # Create an empty file if updated_file.csv does not exist
                 if not os.path.exists("updated_file.csv"):
                     open("updated_file.csv", "a").close()
-                # Open the CSV file for reading and writing
-                with open("mobile_products.csv", "r") as file, \
-                        open("updated_file.csv", "w", newline="") as newFile:
-                    reader = csv.DictReader(file)
-                    # Check if the new file is empty before writing
-                    if os.path.getsize("updated_file.csv") == 0:
-                        columns = []
-                        # New header without the deleted columns
-                        for column in reader.fieldnames:
-                            if column not in deleteIdColumns:
-                                columns.append(column)
-                        # Write the updated content to the new file
-                        writer = csv.DictWriter(newFile, fieldnames=columns)
-                        writer.writeheader()
-                        for row in reader:
-                            for column in deleteIdColumns:
-                                if column in row:
-                                    del row[column]
-                            writer.writerow(row)  
+                    # Open the CSV file for reading and writing
+                    with open("mobile_products.csv", "r") as file, \
+                            open("updated_file.csv", "w", newline="") as newFile:
+                        reader = csv.DictReader(file)
+                        # Check if the new file is empty before writing
+                        if os.path.getsize("updated_file.csv") == 0:
+                            columns = []
+                            # New header without the deleted columns
+                            for column in reader.fieldnames:
+                                if column not in deleteIdColumns:
+                                    columns.append(column)
+                            # Write the updated content to the new file
+                            writer = csv.DictWriter(newFile, fieldnames=columns)
+                            writer.writeheader()
+                            for row in reader:
+                                for column in deleteIdColumns:
+                                    if column in row:
+                                        del row[column]
+                                writer.writerow(row)  
                     # If the new file already has data, do not write again
-                    else: 
-                        print("updated_file.csv already has data, skipping write operation.")
+                else: 
+                    print("updated_file.csv already exists, skipping write operation.")
             # Handle error that occurs while reading the file
             except FileNotFoundError:
                 print("something went wrong, cannot read the file")
@@ -384,8 +384,6 @@ class main:
             print("Invalid choice. Please try again.")
             return self.displayPurchase(selectedTop)
 
-
-
     # User Menu
     def userMenu(self):
         while True:
@@ -430,56 +428,71 @@ Admin Menu:
                 print("Press Enter to return to Admin Menu.")
                 input()
             elif choice == "2":
-                print("Update TopUp Price:")
-                # Display all top-ups with current prices
-                for topup in self.topUps:
-                    print(f"{topup.code}. {topup.title} - Class: {topup.className} - Current Price: {topup.price/100:.2f} pounds / {topup.price} pence")
-                choice = input("\nSelect a Top-Up to update by entering its code or 'b' to go back: ")
-                # Validate top-up choice
-                if not choice.isdigit():
-                    if choice in ('b', 'B'):
-                        print("Going back to Admin Menu.\n")
-                        return self.admMenu()
+                while True:
+                    print("Update TopUp Price:\n")
+                    view = input("Would you like to view the topUps available? (yes/no)").strip().lower()
+                    if view in ("yes", "y"):
+                        # Display all top-ups with current prices
+                        for topup in self.topUps:
+                            print(f"{topup.code}. {topup.title} - Class: {topup.className} - Current Price: {topup.price/100:.2f} pounds / {topup.price} pence")
+                    choice = input("\nSelect a Top-Up to update by entering its code or 'b' to go back: ")
+                    # Validate top-up choice
+                    if not choice.isdigit():
+                        if choice in ('b', 'B'):
+                            print("Going back to Admin Menu.\n")
+                            return self.admMenu()
+                        elif not choice.isdigit():
+                            print("Invalid choice. Please try again.")
+                            continue
+                        else:
+                            print("Invalid choice. Please try again.")
+                            return self.admMenu()
                     else:
-                        print("Invalid choice. Please try again.")
-                        return self.admMenu()
-                else:
-                    choice = int(choice)
-                    # check if the selected top-up code is valid
-                    if choice < 0 or choice >= len(self.topUps):
-                        print("Invalid choice. Please try again.")
-                        return self.admMenu()
-                    else:
-                        # Get the selected top-up
-                        selectedTop = next(
-                            topup                  # take this top-up
-                            for topup in self.topUps    # from the list of top-ups
-                            if topup.code == choice)     # only if the code matches the user's choice
-                        print(f"\nYou selected: \nTop-Up: {selectedTop.title}"
-                              f"Class: {selectedTop.className}"
-                              f"Current Price: {selectedTop.price/100:.2f} pounds / {selectedTop.price} pence")
-                        newPrice = input("Enter the new price in pence: ")
-                        if not newPrice.isdigit() or int(newPrice) < 0:
-                            print("Invalid price. Please enter a valid positive integer.")
+                        choice = int(choice)
+                        # check if the selected top-up code is valid
+                        if choice < 0 or choice >= len(self.topUps):
+                            print("Invalid choice. Please try again.")
                             return self.admMenu()
                         else:
-                            selectedTop.price = int(newPrice)
-                            # Update the price in the CSV file
-                            with open("updated_file.csv", "r") as file:
-                                reader = csv.DictReader(file)
-                                rows = list(reader)
-                                with open("updated_file.csv", "w", newline="") as file:
-                                    writer = csv.DictWriter(file, fieldnames=reader.fieldnames)
-                                    writer.writeheader()
-                                    # Update the specific top-up price
-                                    for row in rows:
-                                        if row["topup_title"] == selectedTop.title and row["topup_passenger_class_name"] == selectedTop.className:
-                                            row["topup_price_in_pence"] = str(selectedTop.price)
-                                        writer.writerow(row)
-                            print(f"\nPrice of {selectedTop.title} for {selectedTop.className} was updated successfully to {selectedTop.price/100:.2f} pounds / {selectedTop.price} pence.\n")
-                            print("Press Enter to return to Admin Menu.")
-                            input()
-                            return self.admMenu()
+                            # Get the selected top-up
+                            selectedTop = next(
+                                topup                  # take this top-up
+                                for topup in self.topUps    # from the list of top-ups
+                                if topup.code == choice)     # only if the code matches the user's choice
+                            print(f"\nYou selected: \nTop-Up: {selectedTop.title}\n"
+                                    f"Class: {selectedTop.className}\n"
+                                    f"Current Price: {selectedTop.price/100:.2f} pounds / {selectedTop.price} pence")
+                            newPrice = input("Enter the new price in pence: ")
+                            if not newPrice.isdigit() or int(newPrice) < 0:
+                                print("Invalid price. Please enter a valid positive integer.")
+                                return self.admMenu()
+                            else:
+                                selectedTop.price = int(newPrice)
+                                # Update the price in the CSV file
+                                with open("updated_file.csv", "r") as file:
+                                    reader = csv.DictReader(file)
+                                    rows = list(reader)
+                                    with open("updated_file.csv", "w", newline="") as file:
+                                        writer = csv.DictWriter(file, fieldnames=reader.fieldnames)
+                                        writer.writeheader()
+                                        # Update the specific top-up price
+                                        for row in rows:
+                                            if row["topup_title"] == selectedTop.title and row["topup_passenger_class_name"] == selectedTop.className:
+                                                row["topup_price_in_pence"] = str(selectedTop.price)
+                                            writer.writerow(row)
+                                print(f"\nPrice of {selectedTop.title} for {selectedTop.className} was updated successfully to {selectedTop.price/100:.2f} pounds / {selectedTop.price} pence.\n")
+                                continueChange = input("Would you like to make another change? (yes/no)").strip().lower()
+                                # Check if the Admin wants to make another change
+                                if continueChange in ("yes", "y"):
+                                    print("\n")
+                                    continue
+                                else:
+                                    print("Thank you for updating the price. Returning to Admin Menu.\n")
+                                    return self.admMenu()
+                else:
+                    print("Invalid choice. Please try again.")
+
+
 
             elif choice == "3":
                 print("Purchase Chart")
